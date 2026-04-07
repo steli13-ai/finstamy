@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-04-07T16:50:57.499235+00:00",
+  "cases_total": 1,
+  "unsupported_claim_rate": 0.3333333333333333,
+  "citation_resolution_rate": 0.6666666666666666,
+  "source_precision_at_k": null,
+  "fallback_rate": 0.0,
+  "first_pass_acceptance_rate": 0.0,
+  "human_edit_minutes_per_section": null,
+  "docx_export_defects": 1,
+  "avg_language_score": 100,
+  "sections_with_high_issues": 0,
+  "total_language_issues": 0
+}

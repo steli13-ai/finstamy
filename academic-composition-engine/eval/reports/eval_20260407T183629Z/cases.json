@@ -1,0 +1,42 @@
+[
+  {
+    "case_id": "case_demo_s1",
+    "project_id": "demo",
+    "section_id": "s1",
+    "run_id": "run_20260407T183628Z_32aaa966",
+    "metrics": {
+      "unsupported_claim_rate": 0.3333333333333333,
+      "citation_resolution_rate": 0.6666666666666666,
+      "source_precision_at_k": null,
+      "fallback_rate": 0.0,
+      "first_pass_acceptance_rate": 0.0,
+      "human_edit_minutes_per_section": null,
+      "docx_export_defects": 1,
+      "retrieved_candidates": 0,
+      "reranked_candidates": 0,
+      "total_citations": 3,
+      "language_issue_count": 0,
+      "high_severity_count": 0,
+      "language_score": 100
+    },
+    "metric_groups": {
+      "evidence_metrics": {
+        "unsupported_claim_rate": 0.3333333333333333,
+        "source_precision_at_k": null
+      },
+      "citation_metrics": {
+        "citation_resolution_rate": 0.6666666666666666,
+        "total_citations": 3
+      },
+      "language_qa_metrics": {
+        "language_score": 100,
+        "language_issue_count": 0,
+        "high_severity_count": 0
+      },
+      "fallback_usage": {
+        "fallback_rate": 0.0,
+        "first_pass_acceptance_rate": 0.0
+      }
+    }
+  }
+]

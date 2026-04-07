@@ -1,0 +1,6 @@
+{
+  "citation_resolution_rate_min": 0.5,
+  "unsupported_claim_rate_max": 0.5,
+  "language_score_min": 70,
+  "fallback_rate_max": 1.0
+}

@@ -1,0 +1,14 @@
+{
+  "section_id": "s1",
+  "section_goal": "Definește contextul, problema și obiectivul secțiunii.",
+  "questions_to_answer": [
+    "Care este problema?",
+    "Care este obiectivul?"
+  ],
+  "candidate_passages": [],
+  "allowed_claims": [
+    "Problema este relevantă în domeniu.",
+    "Secțiunea definește obiectivul lucrării."
+  ],
+  "unsupported_claims": []
+}

@@ -1,0 +1,11 @@
+{
+  "section_id": "s1",
+  "title": "Introducere",
+  "draft_markdown": "## Introducere Contextul temei este definit pe baza surselor. [@smith2020] Problema principală este formulată explicit. [@doe2021] Obiectivul secțiunii este justificat. [CITE:s1_c3]\n",
+  "used_chunks": [],
+  "citations_needed": [
+    "s1_c1",
+    "s1_c2",
+    "s1_c3"
+  ]
+}

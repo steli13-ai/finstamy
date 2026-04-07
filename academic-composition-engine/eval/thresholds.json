@@ -1,0 +1,10 @@
+{
+  "default_threshold": 0.01,
+  "metric_thresholds": {
+    "unsupported_claim_rate": 0.005,
+    "citation_resolution_rate": 0.01,
+    "avg_language_score": 1.0,
+    "fallback_rate": 0.02,
+    "first_pass_acceptance_rate": 0.01
+  }
+}

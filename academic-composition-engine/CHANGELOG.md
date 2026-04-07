@@ -1,0 +1,35 @@
+# Changelog
+
+## [0.1.0] - 2026-04-07
+
+### Added
+- End-to-end section workflow via LangGraph
+- CLI commands for `init`, `run-section`, `review`, `export-docx`
+- Docling-first ingestion with GROBID/local fallbacks
+- LanceDB indexing and retrieval with lexical fallback
+- Claim planning and section writing with optional Ollama runtime
+- Deterministic citation resolution and evidence validation
+- Run artifact persistence and provenance tracking
+- Human review gates with pause/resume via persistent checkpointer
+- Final language QA reports per section and per run (consultative)
+- Eval harness with report generation (`summary.json`, `cases.json`)
+- Baseline promotion and comparison workflow
+- Regression gate command (`eval-gate`) and CI integration
+- Golden fixture (`demo_golden`) and smoke tests for CLI flow
+
+### Changed
+- Runtime architecture aligned to evidence-grounded section flow
+- Evaluation reports moved to directory-based format with summary and case breakdown
+- Compare flow supports thresholds, baseline shortcuts, and material-change classification
+- `eval-report` supports `--use-baseline` shortcut with conflict handling
+
+### Fixed
+- Packaging issue for eval runner in editable installs
+- CLI conflict handling for `latest` / `report` / `baseline` combinations
+- Baseline resolution for both legacy and directory-based report formats
+- Concurrent state update issue on `node_traces` in LangGraph state channels
+
+### Notes
+- This release is the first daily-usable MVP.
+- Obsidian is not part of runtime path in `0.1.0`.
+- GROBID remains a fallback parser in the MVP.

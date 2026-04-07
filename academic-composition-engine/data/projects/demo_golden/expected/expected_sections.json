@@ -1,0 +1,12 @@
+{
+  "required_section_id": "s1",
+  "required_artifacts": [
+    "evidence_pack.json",
+    "claim_plan.json",
+    "draft.md",
+    "citation_resolution.json",
+    "validation_report.json",
+    "language_qa_report.json",
+    "metrics.json"
+  ]
+}

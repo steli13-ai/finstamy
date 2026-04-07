@@ -1,0 +1,4 @@
+{
+  "expected_keys": ["smith2020", "doe2021", "lee2022"],
+  "minimum_resolved_citations": 1
+}

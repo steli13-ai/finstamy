@@ -1,0 +1,21 @@
+{
+  "section_id": "s1",
+  "resolved_citations": [
+    {
+      "claim_id": "s1_c1",
+      "citation_key": "smith2020",
+      "source_id": "smith2020"
+    },
+    {
+      "claim_id": "s1_c2",
+      "citation_key": "doe2021",
+      "source_id": "doe2021"
+    }
+  ],
+  "unresolved": [
+    {
+      "claim_id": "s1_c3",
+      "reason": "no_key_available"
+    }
+  ]
+}

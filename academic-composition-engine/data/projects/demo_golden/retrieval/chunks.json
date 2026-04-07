@@ -1,0 +1,12 @@
+[
+  {
+    "source_id": "source_limitations",
+    "chunk_id": "source_limitations::c0",
+    "text": "Beneficiile AI pentru redactare includ viteza, suportul lingvistic și idearea rapidă. Limitările includ halucinațiile, citările incorecte și dependența de prompturi slab definite. În practică, un flux robust necesită validare a afirmațiilor și mapare deterministă a citărilor."
+  },
+  {
+    "source_id": "source_overview",
+    "chunk_id": "source_overview::c0",
+    "text": "# AI în redactarea academică Instrumentele AI pot accelera faza de brainstorming, sumarizare și structurare a ideilor. În context educațional, aceste instrumente contribuie la creșterea vitezei de redactare, dar pot introduce și riscuri legate de acuratețea factuală. Studenții folosesc frecvent asistenți AI pentru clarificarea conceptelor și pentru îmbunătățirea lizibilității textului. O limitare importantă este tendința de a produce formulări generale fără suport bibliografic suficient."
+  }
+]

@@ -1,0 +1,3 @@
+Beneficiile AI pentru redactare includ viteza, suportul lingvistic și idearea rapidă.
+Limitările includ halucinațiile, citările incorecte și dependența de prompturi slab definite.
+În practică, un flux robust necesită validare a afirmațiilor și mapare deterministă a citărilor.

@@ -1,0 +1,14 @@
+/.venv/
+
+academic-composition-engine/**/__pycache__/
+academic-composition-engine/**/*.pyc
+academic-composition-engine/.pytest_cache/
+academic-composition-engine/academic_composition_engine.egg-info/
+
+academic-composition-engine/data/checkpoints/
+academic-composition-engine/data/projects/*/runs/
+academic-composition-engine/data/projects/demo_smoke_*/
+
+academic-composition-engine/eval/reports/latest.json
+academic-composition-engine/eval/reports/eval_*/
+academic-composition-engine/eval/reports/compare_*.json

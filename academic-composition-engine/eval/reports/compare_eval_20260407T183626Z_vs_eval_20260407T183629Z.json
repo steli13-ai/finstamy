@@ -1,0 +1,85 @@
+{
+  "base_report": "eval_20260407T183626Z",
+  "target_report": "eval_20260407T183629Z",
+  "thresholds_used": {
+    "default_threshold": 0.01,
+    "metric_thresholds": {
+      "unsupported_claim_rate": 0.005,
+      "citation_resolution_rate": 0.01,
+      "avg_language_score": 1.0,
+      "fallback_rate": 0.02,
+      "first_pass_acceptance_rate": 0.01
+    },
+    "config_path": "eval/thresholds.json"
+  },
+  "summary_delta": {
+    "unsupported_claim_rate": {
+      "base": 0.3333333333333333,
+      "target": 0.3333333333333333,
+      "delta": 0.0,
+      "status": "unchanged",
+      "threshold": 0.005,
+      "is_material_change": false
+    },
+    "citation_resolution_rate": {
+      "base": 0.6666666666666666,
+      "target": 0.6666666666666666,
+      "delta": 0.0,
+      "status": "unchanged",
+      "threshold": 0.01,
+      "is_material_change": false
+    },
+    "avg_language_score": {
+      "base": 100,
+      "target": 100,
+      "delta": 0,
+      "status": "unchanged",
+      "threshold": 1.0,
+      "is_material_change": false
+    },
+    "fallback_rate": {
+      "base": 0.0,
+      "target": 0.0,
+      "delta": 0.0,
+      "status": "unchanged",
+      "threshold": 0.02,
+      "is_material_change": false
+    },
+    "first_pass_acceptance_rate": {
+      "base": 0.0,
+      "target": 0.0,
+      "delta": 0.0,
+      "status": "unchanged",
+      "threshold": 0.01,
+      "is_material_change": false
+    }
+  },
+  "regressions_summary": {
+    "improved": [],
+    "unchanged": [
+      "unsupported_claim_rate",
+      "citation_resolution_rate",
+      "avg_language_score",
+      "fallback_rate",
+      "first_pass_acceptance_rate"
+    ],
+    "regressed": [],
+    "material_case_changes": 0
+  },
+  "case_level_diff": [
+    {
+      "case_id": "case_demo_s1",
+      "base_score": 100,
+      "target_score": 100,
+      "metric_delta": {
+        "unsupported_claim_rate": 0.0,
+        "citation_resolution_rate": 0.0,
+        "fallback_rate": 0.0,
+        "first_pass_acceptance_rate": 0.0,
+        "language_score": 0
+      },
+      "main_reason": "unchanged:unsupported_claim_rate",
+      "is_material_change": false
+    }
+  ]
+}
