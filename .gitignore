@@ -7,7 +7,14 @@ academic-composition-engine/academic_composition_engine.egg-info/
 
 academic-composition-engine/data/checkpoints/
 academic-composition-engine/data/projects/*/runs/
+academic-composition-engine/data/projects/**/runs/
 academic-composition-engine/data/projects/demo_smoke_*/
+academic-composition-engine/**/*.sqlite
+academic-composition-engine/**/*.sqlite-wal
+academic-composition-engine/**/*.sqlite-shm
+academic-composition-engine/**/*.db
+academic-composition-engine/**/*.db-wal
+academic-composition-engine/**/*.db-shm
 
 academic-composition-engine/eval/reports/latest.json
 academic-composition-engine/eval/reports/eval_*/
