@@ -12,10 +12,21 @@ from app.services.run_artifacts import (
     persist_run_language_summary,
     persist_review_decision,
     persist_run_artifacts,
+    persist_candidate_source_artifacts,
+)
+from app.services.candidate_sources import (
+    build_candidate_entry,
+    build_report as build_candidate_report,
+    ingest_accepted_candidates,
+    load_queue,
+    save_queue,
+    save_report,
+    triage_candidate,
 )
 from app.services.languagetool_client import analyze_text
 from app.services.devils_advocate import evaluate_stage, load_anti_prompt_snapshot
 from app.integrations.obsidian.sync import compile_obsidian_knowledge
+from app.mcp.servers.research_server import google_search, youtube_search, reddit_search
 from app.eval.runner import run_eval_cases
 from app.eval.reporting import (
     compare_reports,
@@ -42,6 +53,133 @@ def app_callback(
 
 def _project_dir(project_id: str) -> Path:
     return Path("data/projects") / project_id
+
+
+def _parse_channels(raw: str) -> list[str]:
+    channels = [c.strip().lower() for c in raw.split(",") if c.strip()]
+    allowed = {"google", "youtube", "reddit"}
+    invalid = [c for c in channels if c not in allowed]
+    if invalid:
+        raise ValueError(f"Canale invalide: {invalid}. Permise: google,youtube,reddit")
+    return channels or ["google"]
+
+
+@app.command("discover-sources")
+def discover_sources(
+    project_id: str,
+    section_id: str = typer.Option("s1", help="Section ID."),
+    query: str = typer.Option(..., help="Query de discovery."),
+    channels: str = typer.Option("google,youtube,reddit", help="Canale CSV: google,youtube,reddit."),
+    top_k: int = typer.Option(5, help="Limită rezultate per canal."),
+    mapped_questions: str = typer.Option("", help="Întrebări mapate, separate prin |"),
+    run_id: str | None = typer.Option(None, help="Run ID existent; dacă lipsește se creează unul nou."),
+):
+    p = _project_dir(project_id)
+    for d in ["sources", "parsed", "retrieval", "evidence", "sections", "citations", "qa", "exports"]:
+        (p / d).mkdir(parents=True, exist_ok=True)
+
+    run_id = run_id or create_run_id()
+    chosen_channels = _parse_channels(channels)
+    mapped = [x.strip() for x in mapped_questions.split("|") if x.strip()]
+
+    queue = load_queue(project_dir=str(p), run_id=run_id, section_id=section_id)
+    discovered = 0
+
+    for channel in chosen_channels:
+        try:
+            if channel == "google":
+                results = google_search(query=query, top_k=top_k)
+            elif channel == "youtube":
+                results = youtube_search(query=query, max_results=top_k)
+            else:
+                results = reddit_search(query=query, limit=top_k)
+        except Exception as exc:
+            results = [
+                {
+                    "title": f"{channel} search failed",
+                    "url": "",
+                    "snippet": str(exc),
+                    "source": channel,
+                    "raw_metadata": {"error": str(exc)},
+                }
+            ]
+
+        for row in results:
+            queue.append(
+                build_candidate_entry(
+                    section_id=section_id,
+                    discovery_channel=channel,
+                    result=row,
+                    mapped_questions=mapped,
+                )
+            )
+            discovered += 1
+
+    queue_path = save_queue(project_dir=str(p), run_id=run_id, section_id=section_id, queue=queue)
+    report = build_candidate_report(section_id=section_id, queue=queue)
+    report_path = save_report(project_dir=str(p), run_id=run_id, section_id=section_id, report=report)
+    persist_candidate_source_artifacts(project_dir=str(p), run_id=run_id, section_id=section_id, queue=queue, report=report)
+
+    typer.echo(
+        f"OK discover-sources: run={run_id} section={section_id} discovered={discovered} "
+        f"queue={queue_path} report={report_path}"
+    )
+
+
+@app.command("triage-source")
+def triage_source(
+    project_id: str,
+    run_id: str = typer.Option(..., help="Run ID existent."),
+    section_id: str = typer.Option("s1", help="Section ID."),
+    candidate_id: str = typer.Option(..., help="Candidate ID."),
+    decision: str = typer.Option(..., help="accept|reject"),
+    reason: str = typer.Option(..., help="Motiv explicit keep/reject."),
+):
+    p = _project_dir(project_id)
+    normalized_decision = "accepted" if decision.strip().lower() == "accept" else "rejected"
+    if decision.strip().lower() not in {"accept", "reject"}:
+        typer.echo("decision trebuie să fie accept sau reject")
+        raise typer.Exit(1)
+
+    queue = load_queue(project_dir=str(p), run_id=run_id, section_id=section_id)
+    try:
+        queue = triage_candidate(
+            queue=queue,
+            candidate_id=candidate_id,
+            decision=normalized_decision,
+            reason=reason,
+        )
+    except ValueError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+
+    queue_path = save_queue(project_dir=str(p), run_id=run_id, section_id=section_id, queue=queue)
+    report = build_candidate_report(section_id=section_id, queue=queue)
+    report_path = save_report(project_dir=str(p), run_id=run_id, section_id=section_id, report=report)
+    persist_candidate_source_artifacts(project_dir=str(p), run_id=run_id, section_id=section_id, queue=queue, report=report)
+
+    typer.echo(
+        f"OK triage-source: run={run_id} section={section_id} candidate_id={candidate_id} "
+        f"decision={normalized_decision} queue={queue_path} report={report_path}"
+    )
+
+
+@app.command("ingest-accepted-sources")
+def ingest_accepted_sources_cmd(
+    project_id: str,
+    run_id: str = typer.Option(..., help="Run ID existent."),
+    section_id: str = typer.Option("s1", help="Section ID."),
+):
+    p = _project_dir(project_id)
+    queue = load_queue(project_dir=str(p), run_id=run_id, section_id=section_id)
+    written = ingest_accepted_candidates(project_dir=str(p), run_id=run_id, section_id=section_id, queue=queue)
+    report = build_candidate_report(section_id=section_id, queue=queue)
+    report_path = save_report(project_dir=str(p), run_id=run_id, section_id=section_id, report=report)
+    persist_candidate_source_artifacts(project_dir=str(p), run_id=run_id, section_id=section_id, queue=queue, report=report)
+
+    typer.echo(
+        f"OK ingest-accepted-sources: run={run_id} section={section_id} ingested={len(written)} report={report_path}"
+    )
 
 
 def _thread_config(run_id: str) -> dict:

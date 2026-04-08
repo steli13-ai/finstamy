@@ -236,3 +236,19 @@ def persist_review_decision(
     path = reviews_dir / f"{gate_name}.decision.json"
     _write_json(path, decision_payload)
     return path
+
+
+def persist_candidate_source_artifacts(
+    *,
+    project_dir: str,
+    run_id: str,
+    section_id: str,
+    queue: list[dict],
+    report: dict,
+) -> tuple[Path, Path]:
+    out_dir = section_run_dir(project_dir, run_id, section_id)
+    queue_path = out_dir / "candidate_sources_queue.json"
+    report_path = out_dir / "candidate_sources_report.json"
+    _write_json(queue_path, queue)
+    _write_json(report_path, report)
+    return queue_path, report_path

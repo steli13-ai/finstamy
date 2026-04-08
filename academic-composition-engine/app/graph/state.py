@@ -11,6 +11,7 @@ class ProjectState(TypedDict, total=False):
     auto_approve_gates: bool
     enable_devils_advocate: bool
     enable_devils_advocate_evidence: bool
+    enable_controlled_research_intake: bool
     anti_prompt_snapshot_dir: str
     use_ollama: bool
     ollama_model: str
@@ -49,6 +50,8 @@ class ProjectState(TypedDict, total=False):
     quality_scores: dict
     devils_advocate_reports: dict
     devils_advocate_evidence_reports: dict
+    candidate_sources: dict
+    candidate_source_reports: dict
 
     artifact_hashes: dict
     export_path: str | None

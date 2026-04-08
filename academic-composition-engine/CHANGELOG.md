@@ -8,6 +8,7 @@
 - `research-mcp` server with read-only tools: `google_search`, `youtube_search`, `reddit_search`
 - VS Code MCP example configuration in `.vscode/mcp.json`
 - CLI commands: `sync-obsidian-knowledge`, `inspect-anti-prompts`, `run-devils-advocate`
+- Controlled Research Intake pipeline with candidate queue + explicit triage + accepted-only ingest (`discover-sources`, `triage-source`, `ingest-accepted-sources`)
 
 ## [0.1.0] - 2026-04-07
 

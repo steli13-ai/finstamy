@@ -118,6 +118,9 @@ Reguli compare:
 - `ace sync-obsidian-knowledge`
 - `ace inspect-anti-prompts`
 - `ace run-devils-advocate`
+- `ace discover-sources`
+- `ace triage-source`
+- `ace ingest-accepted-sources`
 - `ace qa-section`
 - `ace qa-run`
 - `ace run-eval`
@@ -211,6 +214,37 @@ Env vars opționale:
 - `YOUTUBE_API_KEY` pentru `youtube_search`
 
 Notă: toate tool-urile sunt read-only și orientate pe research/discovery.
+
+## 11.2 Controlled Research Intake (v0.1.2)
+Flux explicit (nu intră automat în `run-section`):
+
+`discover -> normalize -> candidate queue -> triage -> accept/reject -> ingest accepted only`
+
+Comenzi:
+```bash
+ace discover-sources demo --section-id s1 --query "evidence grounded writing" --channels google,youtube,reddit
+ace triage-source demo --run-id <RUN_ID> --section-id s1 --candidate-id <CAND_ID> --decision accept --reason "relevant to RQ1"
+ace ingest-accepted-sources demo --run-id <RUN_ID> --section-id s1
+```
+
+Artifacte per run/secțiune:
+- `candidate_sources_queue.json` (starea completă)
+- `candidate_sources_report.json` (sumar operațional)
+
+Contract minim candidat:
+- `candidate_id`, `section_id`, `source_type`, `discovery_channel`
+- `citable_status` (`non_citable|needs_verification|candidate_academic`)
+- `decision` (`pending|accepted|rejected`)
+- `reason_for_keep_reject`, `mapped_questions`
+- `title`, `url`, `snippet`, `source`, `raw_metadata`
+- `created_at`, `triaged_at`
+
+Reguli business în cod:
+- `google`: de regulă `needs_verification` sau `candidate_academic`
+- `youtube`: implicit `non_citable`
+- `reddit`: implicit `non_citable`
+
+Sursele YouTube/Reddit sunt tratate ca discovery/context, nu bibliografie directă.
 
 ## 11.1 Ritual de sync recomandat
 Rulează sync-ul obligatoriu:
