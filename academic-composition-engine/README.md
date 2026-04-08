@@ -176,9 +176,9 @@ Output-uri compilate:
 ## 10) Devil's Advocate (consultativ, gate-aware)
 Devil’s advocate folosește AntiPrompt DB compilată și produce raport structurat auditabil.
 
-- Activare în pipeline (feature-flag):
+- Activare în pipeline pe etapa evidence (feature-flag):
 ```bash
-ace run-section demo --section-id s1 --enable-devils-advocate --anti-prompt-snapshot-dir app/knowledge/anti_prompts
+ace run-section demo --section-id s1 --enable-devils-advocate-evidence --anti-prompt-snapshot-dir app/knowledge/anti_prompts
 ```
 - Rulare punctuală pe un run existent:
 ```bash
@@ -186,7 +186,7 @@ ace run-devils-advocate demo --run-id <RUN_ID> --section-id s1 --stage drafting
 ```
 
 Artefact generat:
-- `data/projects/<project_id>/runs/<run_id>/sections/<section_id>/devils_advocate_report.json`
+- `data/projects/<project_id>/runs/<run_id>/sections/<section_id>/devils_advocate_evidence_report.json`
 
 ## 11) Research MCP server (read-only)
 Serverul MCP intern este `research-mcp` și expune exact 3 tool-uri:

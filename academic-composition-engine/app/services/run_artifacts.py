@@ -163,6 +163,7 @@ def persist_run_artifacts(
     node_trace = result.get("node_traces", [])
     language_report = result.get("language_qa_reports", {}).get(section_id, {})
     devils_advocate_report = result.get("devils_advocate_reports", {}).get(section_id, {})
+    devils_advocate_evidence_report = result.get("devils_advocate_evidence_reports", {}).get(section_id, {})
     language_summary = result.get("language_qa_summary") or build_language_qa_summary(result.get("language_qa_reports", {}))
     metrics = build_metrics(result, section_id)
 
@@ -180,6 +181,7 @@ def persist_run_artifacts(
     _write_json(out_dir / "edited_state_patches.json", result.get("edited_state_patches", []))
     _write_json(out_dir / "language_qa_report.json", language_report)
     _write_json(out_dir / "devils_advocate_report.json", devils_advocate_report)
+    _write_json(out_dir / "devils_advocate_evidence_report.json", devils_advocate_evidence_report)
     persist_run_language_summary(project_dir=project_dir, run_id=run_id, summary=language_summary)
 
     hashes = {}
@@ -198,6 +200,7 @@ def persist_run_artifacts(
         "edited_state_patches.json",
         "language_qa_report.json",
         "devils_advocate_report.json",
+        "devils_advocate_evidence_report.json",
     ]:
         p = out_dir / file_name
         hashes[file_name] = _sha256(p)

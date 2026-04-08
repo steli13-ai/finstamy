@@ -1,25 +1,30 @@
 from app.graph.state import ProjectState
-from app.services.devils_advocate import evaluate_stage
+from app.services.devils_advocate import evaluate_evidence_stage
 
 
 def run(state: ProjectState) -> ProjectState:
-    if not state.get("enable_devils_advocate", False):
-        return {"devils_advocate_reports": state.get("devils_advocate_reports", {})}
+    if not state.get("enable_devils_advocate_evidence", False):
+        return {
+            "devils_advocate_evidence_reports": state.get("devils_advocate_evidence_reports", {})
+        }
 
     section_id = state["target_section_id"]
-    drafted = state.get("drafted_sections", {}).get(section_id, {})
     evidence_pack = state.get("evidence_packs", {}).get(section_id, {})
-    citation_resolution = state.get("citation_resolutions", {}).get(section_id, {})
+    retrieval_trace = [
+        row for row in state.get("retrieval_runs", []) if row.get("section_id") == section_id
+    ]
 
-    report = evaluate_stage(
+    report = evaluate_evidence_stage(
         section_id=section_id,
-        stage="drafting",
-        draft_markdown=drafted.get("draft_markdown", ""),
+        questions_to_answer=evidence_pack.get("questions_to_answer", []),
+        candidate_passages=evidence_pack.get("candidate_passages", []),
+        allowed_claims=evidence_pack.get("allowed_claims", []),
+        unsupported_claims=evidence_pack.get("unsupported_claims", []),
+        retrieval_trace=retrieval_trace,
         evidence_pack=evidence_pack,
-        citation_resolution=citation_resolution,
         snapshot_dir=state.get("anti_prompt_snapshot_dir", "app/knowledge/anti_prompts"),
     )
 
-    reports = state.get("devils_advocate_reports", {})
+    reports = state.get("devils_advocate_evidence_reports", {})
     reports[section_id] = report
-    return {"devils_advocate_reports": reports}
+    return {"devils_advocate_evidence_reports": reports}

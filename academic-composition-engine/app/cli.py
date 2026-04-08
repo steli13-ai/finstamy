@@ -188,7 +188,12 @@ def run_section(
     auto_approve_gates: bool = typer.Option(False, help="Aprobă automat toate gate-urile umane."),
     enable_devils_advocate: bool = typer.Option(
         False,
-        help="Activează verificare consultativă anti-prompt după drafting (feature-flag).",
+        help="Flag legacy pentru verificări consultative manuale; integrarea în graph folosește --enable-devils-advocate-evidence.",
+    ),
+    enable_devils_advocate_evidence: bool = typer.Option(
+        False,
+        "--enable-devils-advocate-evidence",
+        help="Activează verificare consultativă anti-prompt după evidence_builder (feature-flag).",
     ),
     anti_prompt_snapshot_dir: str = typer.Option(
         "app/knowledge/anti_prompts",
@@ -219,6 +224,7 @@ def run_section(
         "languagetool_host": languagetool_host,
         "auto_approve_gates": auto_approve_gates,
         "enable_devils_advocate": enable_devils_advocate,
+        "enable_devils_advocate_evidence": enable_devils_advocate_evidence,
         "anti_prompt_snapshot_dir": anti_prompt_snapshot_dir,
     }
 
