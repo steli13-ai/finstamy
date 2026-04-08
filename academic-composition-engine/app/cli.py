@@ -6,8 +6,11 @@ from langgraph.types import Command
 
 from app.graph.graph import build_graph
 from app.services.run_artifacts import (
+    build_devils_advocate_kpi_summary,
     build_language_qa_summary,
     create_run_id,
+    persist_devils_advocate_feedback,
+    persist_devils_advocate_kpi_summary,
     persist_pending_review,
     persist_run_language_summary,
     persist_review_decision,
@@ -312,6 +315,78 @@ def run_devils_advocate(
     typer.echo(f"OK run-devils-advocate: {out_path}")
 
 
+@app.command("review-devils-advocate")
+def review_devils_advocate(
+    project_id: str,
+    run_id: str = typer.Option(..., help="Run ID existent."),
+    section_id: str = typer.Option("s1", help="Section ID."),
+    stage: str = typer.Option("evidence", help="evidence | drafting"),
+    confirmed_useful: int = typer.Option(0, help="Număr semnale confirmate utile/reale."),
+    false_positive: int = typer.Option(0, help="Număr semnale false positive."),
+    ignored: int = typer.Option(0, help="Număr semnale ignorate."),
+    notes: str | None = typer.Option(None, help="Notițe opționale operator."),
+):
+    normalized_stage = stage.strip().lower()
+    if normalized_stage not in {"evidence", "drafting"}:
+        typer.echo("stage trebuie să fie evidence sau drafting")
+        raise typer.Exit(1)
+    if min(confirmed_useful, false_positive, ignored) < 0:
+        typer.echo("confirmed_useful/false_positive/ignored trebuie să fie >= 0")
+        raise typer.Exit(1)
+
+    p = _project_dir(project_id)
+    try:
+        feedback_path = persist_devils_advocate_feedback(
+            project_dir=str(p),
+            run_id=run_id,
+            section_id=section_id,
+            stage=normalized_stage,
+            confirmed_useful=confirmed_useful,
+            false_positive=false_positive,
+            ignored=ignored,
+            notes=notes,
+        )
+    except ValueError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+
+    summary_path = persist_devils_advocate_kpi_summary(project_dir=str(p), run_id=run_id)
+    typer.echo(
+        f"OK review-devils-advocate: run={run_id} section={section_id} stage={normalized_stage} "
+        f"feedback={feedback_path} summary={summary_path}"
+    )
+
+
+@app.command("summarize-devils-advocate-kpis")
+def summarize_devils_advocate_kpis(
+    project_id: str,
+    run_id: str = typer.Option(..., help="Run ID existent."),
+):
+    p = _project_dir(project_id)
+    summary = build_devils_advocate_kpi_summary(project_dir=str(p), run_id=run_id)
+    out_path = persist_devils_advocate_kpi_summary(project_dir=str(p), run_id=run_id)
+
+    recommendation_distribution = summary.get("recommendation_distribution", {})
+    typer.echo(
+        "\n".join(
+            [
+                f"run_id={summary.get('run_id')}",
+                f"reports_total={summary.get('reports_total')}",
+                f"reports_with_material_issue={summary.get('reports_with_material_issue')}",
+                f"avg_score_total={summary.get('avg_score_total')}",
+                f"total_red_flags={summary.get('total_red_flags')}",
+                f"useful_red_flags={summary.get('useful_red_flags')}",
+                f"false_positives={summary.get('false_positives')}",
+                f"useful_red_flag_rate={summary.get('useful_red_flag_rate')}",
+                f"false_positive_rate={summary.get('false_positive_rate')}",
+                f"feedback_status={summary.get('feedback_status')}",
+                f"recommendation_distribution={recommendation_distribution}",
+                f"output={out_path}",
+            ]
+        )
+    )
+
+
 @app.command("run-section")
 def run_section(
     project_id: str,
@@ -530,6 +605,9 @@ def eval_report(
                 f"avg_language_score={summary.get('avg_language_score')}",
                 f"fallback_rate={summary.get('fallback_rate')}",
                 f"first_pass_acceptance_rate={summary.get('first_pass_acceptance_rate')}",
+                f"avg_devils_advocate_score_total={summary.get('avg_devils_advocate_score_total')}",
+                f"reports_with_material_issue={summary.get('reports_with_material_issue')}",
+                f"recommendation_distribution={summary.get('recommendation_distribution')}",
             ]
         )
     )

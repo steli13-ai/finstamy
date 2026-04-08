@@ -384,3 +384,5 @@ def test_persist_run_artifacts_writes_evidence_devils_advocate_file(tmp_path: Pa
         result=result,
     )
     assert (out_dir / "devils_advocate_evidence_report.json").exists()
+    assert (out_dir / "devils_advocate_feedback.json").exists()
+    assert (project_dir / "runs" / "run_test" / "devils_advocate_kpi_summary.json").exists()

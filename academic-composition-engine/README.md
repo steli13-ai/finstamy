@@ -196,6 +196,17 @@ ace run-devils-advocate demo --run-id <RUN_ID> --section-id s1 --stage drafting
 
 Artefact generat:
 - `data/projects/<project_id>/runs/<run_id>/sections/<section_id>/devils_advocate_evidence_report.json`
+- `data/projects/<project_id>/runs/<run_id>/sections/<section_id>/devils_advocate_feedback.json`
+- `data/projects/<project_id>/runs/<run_id>/devils_advocate_kpi_summary.json`
+
+Feedback/KPI tracking minim (v0.1.4):
+```bash
+ace review-devils-advocate demo --run-id <RUN_ID> --section-id s1 --stage evidence --confirmed-useful 2 --false-positive 1 --ignored 0 --notes "operator feedback"
+ace summarize-devils-advocate-kpis demo --run-id <RUN_ID>
+```
+
+KPI summary include: `useful_red_flags`, `total_red_flags`, `false_positives`, `useful_red_flag_rate`, `false_positive_rate`, `recommendation_distribution`, `reports_with_material_issue`, `avg_score_total`.
+Fără feedback uman, rate-urile rămân `null` și `feedback_status=pending_feedback`.
 
 ## 11) Research MCP server (read-only)
 Serverul MCP intern este `research-mcp` și expune exact 3 tool-uri:

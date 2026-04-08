@@ -103,6 +103,15 @@ def run_eval_cases(cases_dir: Path | str = "eval/cases", reports_dir: Path | str
         "avg_language_score": avg("language_score"),
         "sections_with_high_issues": avg("high_severity_count"),
         "total_language_issues": avg("language_issue_count"),
+        "avg_devils_advocate_score_total": avg("devils_advocate_score_total"),
+        "reports_with_material_issue": sum(
+            1 for r in rows if r.get("metrics", {}).get("devils_advocate_is_material_issue") is True
+        ),
+        "recommendation_distribution": {
+            "pass": sum(1 for r in rows if r.get("metrics", {}).get("devils_advocate_recommendation") == "pass"),
+            "review": sum(1 for r in rows if r.get("metrics", {}).get("devils_advocate_recommendation") == "review"),
+            "revise": sum(1 for r in rows if r.get("metrics", {}).get("devils_advocate_recommendation") == "revise"),
+        },
     }
 
     report_path = save_eval_report(summary=summary, cases=rows, reports_dir=reports_path)

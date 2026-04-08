@@ -6,6 +6,8 @@
 - Obsidian authoring integration layer (`client/parser/schemas/sync`) with compiled runtime snapshots in `app/knowledge/*`
 - Consultative devil’s advocate service and optional graph integration (feature-flagged)
 - Calibrated devil’s advocate scoring (`score_total`, `score_breakdown`, `top_issues`, `recommendation_reason`, `scoring_version`) with config-backed thresholds in `app/config/devils_advocate_scoring.json`
+- Devil’s advocate KPI tracking (`useful_red_flags`, `total_red_flags`, `false_positives`, `useful_red_flag_rate`, `false_positive_rate`, `recommendation_distribution`, `reports_with_material_issue`, `avg_score_total`) via section feedback + run summary artifacts
+- CLI commands: `review-devils-advocate`, `summarize-devils-advocate-kpis`
 - `research-mcp` server with read-only tools: `google_search`, `youtube_search`, `reddit_search`
 - VS Code MCP example configuration in `.vscode/mcp.json`
 - CLI commands: `sync-obsidian-knowledge`, `inspect-anti-prompts`, `run-devils-advocate`

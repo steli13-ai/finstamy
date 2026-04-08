@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -36,6 +37,12 @@ def _write_json(path: Path, data) -> None:
 def _write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
+
+
+def _read_json(path: Path):
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _sha256(path: Path) -> str:
@@ -81,6 +88,10 @@ def build_metrics(result: dict, section_id: str) -> dict:
     language_issue_count = int(language_counts.get("low", 0)) + int(language_counts.get("medium", 0)) + int(language_counts.get("high", 0))
     high_severity_count = int(language_counts.get("high", 0))
     language_score = language_report.get("score")
+    devils_report = result.get("devils_advocate_evidence_reports", {}).get(section_id) or result.get("devils_advocate_reports", {}).get(section_id, {})
+    devils_score_total = devils_report.get("score_total") if isinstance(devils_report, dict) else None
+    devils_recommendation = devils_report.get("recommendation") if isinstance(devils_report, dict) else None
+    devils_material_issue = devils_report.get("is_material_issue") if isinstance(devils_report, dict) else None
 
     return {
         "unsupported_claim_rate": validation.get("unsupported_claim_rate"),
@@ -96,7 +107,252 @@ def build_metrics(result: dict, section_id: str) -> dict:
         "language_issue_count": language_issue_count,
         "high_severity_count": high_severity_count,
         "language_score": language_score,
+        "devils_advocate_score_total": devils_score_total,
+        "devils_advocate_recommendation": devils_recommendation,
+        "devils_advocate_is_material_issue": devils_material_issue,
     }
+
+
+def _red_flags_count(report: dict) -> int:
+    red_flags = report.get("red_flags", []) if isinstance(report, dict) else []
+    if isinstance(red_flags, list):
+        return len(red_flags)
+    return 0
+
+
+def persist_devils_advocate_feedback(
+    *,
+    project_dir: str,
+    run_id: str,
+    section_id: str,
+    stage: str,
+    confirmed_useful: int,
+    false_positive: int,
+    ignored: int,
+    notes: str | None = None,
+    issue_feedback: list[dict] | None = None,
+    actor: str | None = None,
+) -> Path:
+    out_dir = section_run_dir(project_dir, run_id, section_id)
+    feedback_path = out_dir / "devils_advocate_feedback.json"
+
+    report_file = "devils_advocate_evidence_report.json" if stage == "evidence" else "devils_advocate_report.json"
+    report = _read_json(out_dir / report_file) or {}
+    total_red_flags = _red_flags_count(report)
+    total_marked = int(confirmed_useful) + int(false_positive) + int(ignored)
+    if total_red_flags > 0 and total_marked > total_red_flags:
+        raise ValueError("Suma confirmed_useful + false_positive + ignored depășește total_red_flags.")
+
+    payload = _read_json(feedback_path)
+    if not isinstance(payload, dict):
+        payload = {
+            "run_id": run_id,
+            "section_id": section_id,
+            "updated_at": utc_now_iso(),
+            "stages": {},
+        }
+
+    stages = payload.get("stages", {}) if isinstance(payload.get("stages"), dict) else {}
+    stages[stage] = {
+        "updated_at": utc_now_iso(),
+        "actor": actor,
+        "total_red_flags": total_red_flags,
+        "confirmed_useful": int(confirmed_useful),
+        "false_positive": int(false_positive),
+        "ignored": int(ignored),
+        "notes": notes,
+        "issue_feedback": issue_feedback or [],
+        "feedback_status": "provided",
+    }
+
+    payload["stages"] = stages
+    payload["updated_at"] = utc_now_iso()
+    _write_json(feedback_path, payload)
+    return feedback_path
+
+
+def _ensure_devils_advocate_feedback_template(
+    *,
+    project_dir: str,
+    run_id: str,
+    section_id: str,
+    drafting_report: dict,
+    evidence_report: dict,
+) -> Path:
+    out_dir = section_run_dir(project_dir, run_id, section_id)
+    feedback_path = out_dir / "devils_advocate_feedback.json"
+    existing = _read_json(feedback_path)
+    if isinstance(existing, dict):
+        return feedback_path
+
+    stages = {}
+    if isinstance(drafting_report, dict) and drafting_report:
+        stages["drafting"] = {
+            "updated_at": utc_now_iso(),
+            "total_red_flags": _red_flags_count(drafting_report),
+            "confirmed_useful": None,
+            "false_positive": None,
+            "ignored": None,
+            "notes": None,
+            "issue_feedback": [],
+            "feedback_status": "pending_feedback",
+        }
+    if isinstance(evidence_report, dict) and evidence_report:
+        stages["evidence"] = {
+            "updated_at": utc_now_iso(),
+            "total_red_flags": _red_flags_count(evidence_report),
+            "confirmed_useful": None,
+            "false_positive": None,
+            "ignored": None,
+            "notes": None,
+            "issue_feedback": [],
+            "feedback_status": "pending_feedback",
+        }
+
+    template = {
+        "run_id": run_id,
+        "section_id": section_id,
+        "updated_at": utc_now_iso(),
+        "stages": stages,
+    }
+    _write_json(feedback_path, template)
+    return feedback_path
+
+
+def build_devils_advocate_kpi_summary(*, project_dir: str, run_id: str) -> dict:
+    root = run_root_dir(project_dir, run_id)
+    sections_root = root / "sections"
+
+    summary = {
+        "run_id": run_id,
+        "generated_at": utc_now_iso(),
+        "reports_total": 0,
+        "reports_with_material_issue": 0,
+        "avg_score_total": None,
+        "recommendation_distribution": {"pass": 0, "review": 0, "revise": 0},
+        "useful_red_flags": None,
+        "total_red_flags": 0,
+        "false_positives": None,
+        "useful_red_flag_rate": None,
+        "false_positive_rate": None,
+        "feedback_status": "pending_feedback",
+        "feedback_reports_count": 0,
+        "reports_without_feedback": 0,
+        "stage_breakdown": {},
+    }
+
+    if not sections_root.exists():
+        return summary
+
+    stages = {
+        "drafting": "devils_advocate_report.json",
+        "evidence": "devils_advocate_evidence_report.json",
+    }
+
+    score_values: list[float] = []
+    recommendation_counter: Counter = Counter()
+    stage_acc = {
+        stage: {
+            "reports_total": 0,
+            "reports_with_material_issue": 0,
+            "recommendation_distribution": {"pass": 0, "review": 0, "revise": 0},
+            "avg_score_total": None,
+            "score_values": [],
+        }
+        for stage in stages
+    }
+
+    total_red_flags_all = 0
+    useful_sum = 0
+    false_positive_sum = 0
+    red_flags_with_feedback = 0
+    feedback_reports_count = 0
+    reports_without_feedback = 0
+
+    for section_dir in sorted(sections_root.iterdir()):
+        if not section_dir.is_dir():
+            continue
+        feedback_payload = _read_json(section_dir / "devils_advocate_feedback.json") or {}
+        stage_feedback = feedback_payload.get("stages", {}) if isinstance(feedback_payload, dict) else {}
+
+        for stage, report_name in stages.items():
+            report = _read_json(section_dir / report_name)
+            if not isinstance(report, dict) or not report:
+                continue
+
+            summary["reports_total"] += 1
+            stage_acc[stage]["reports_total"] += 1
+
+            total_red_flags = _red_flags_count(report)
+            total_red_flags_all += total_red_flags
+
+            recommendation = str(report.get("recommendation", "")).lower()
+            if recommendation in {"pass", "review", "revise"}:
+                recommendation_counter[recommendation] += 1
+                stage_acc[stage]["recommendation_distribution"][recommendation] += 1
+
+            if bool(report.get("is_material_issue")):
+                summary["reports_with_material_issue"] += 1
+                stage_acc[stage]["reports_with_material_issue"] += 1
+
+            score_total = report.get("score_total")
+            if isinstance(score_total, (int, float)):
+                score_values.append(float(score_total))
+                stage_acc[stage]["score_values"].append(float(score_total))
+
+            feedback = stage_feedback.get(stage, {}) if isinstance(stage_feedback, dict) else {}
+            if feedback.get("feedback_status") == "provided":
+                feedback_reports_count += 1
+                confirmed = feedback.get("confirmed_useful")
+                false_positive = feedback.get("false_positive")
+                if isinstance(confirmed, int):
+                    useful_sum += confirmed
+                if isinstance(false_positive, int):
+                    false_positive_sum += false_positive
+                red_flags_with_feedback += total_red_flags
+            else:
+                reports_without_feedback += 1
+
+    summary["total_red_flags"] = total_red_flags_all
+    summary["avg_score_total"] = (sum(score_values) / len(score_values)) if score_values else None
+    summary["recommendation_distribution"] = {
+        "pass": recommendation_counter.get("pass", 0),
+        "review": recommendation_counter.get("review", 0),
+        "revise": recommendation_counter.get("revise", 0),
+    }
+
+    summary["feedback_reports_count"] = feedback_reports_count
+    summary["reports_without_feedback"] = reports_without_feedback
+
+    if feedback_reports_count == 0:
+        summary["feedback_status"] = "pending_feedback"
+        summary["useful_red_flags"] = None
+        summary["false_positives"] = None
+        summary["useful_red_flag_rate"] = None
+        summary["false_positive_rate"] = None
+    else:
+        summary["feedback_status"] = "complete" if reports_without_feedback == 0 else "partial_feedback"
+        summary["useful_red_flags"] = useful_sum
+        summary["false_positives"] = false_positive_sum
+        denom = red_flags_with_feedback
+        summary["useful_red_flag_rate"] = (useful_sum / denom) if denom > 0 else None
+        summary["false_positive_rate"] = (false_positive_sum / denom) if denom > 0 else None
+
+    stage_breakdown = {}
+    for stage, payload in stage_acc.items():
+        scores = payload.pop("score_values")
+        payload["avg_score_total"] = (sum(scores) / len(scores)) if scores else None
+        stage_breakdown[stage] = payload
+    summary["stage_breakdown"] = stage_breakdown
+    return summary
+
+
+def persist_devils_advocate_kpi_summary(*, project_dir: str, run_id: str) -> Path:
+    summary = build_devils_advocate_kpi_summary(project_dir=project_dir, run_id=run_id)
+    root = run_root_dir(project_dir, run_id)
+    path = root / "devils_advocate_kpi_summary.json"
+    _write_json(path, summary)
+    return path
 
 
 def build_language_qa_summary(language_reports: dict) -> dict:
@@ -182,6 +438,14 @@ def persist_run_artifacts(
     _write_json(out_dir / "language_qa_report.json", language_report)
     _write_json(out_dir / "devils_advocate_report.json", devils_advocate_report)
     _write_json(out_dir / "devils_advocate_evidence_report.json", devils_advocate_evidence_report)
+    _ensure_devils_advocate_feedback_template(
+        project_dir=project_dir,
+        run_id=run_id,
+        section_id=section_id,
+        drafting_report=devils_advocate_report,
+        evidence_report=devils_advocate_evidence_report,
+    )
+    persist_devils_advocate_kpi_summary(project_dir=project_dir, run_id=run_id)
     persist_run_language_summary(project_dir=project_dir, run_id=run_id, summary=language_summary)
 
     hashes = {}
@@ -201,6 +465,7 @@ def persist_run_artifacts(
         "language_qa_report.json",
         "devils_advocate_report.json",
         "devils_advocate_evidence_report.json",
+        "devils_advocate_feedback.json",
     ]:
         p = out_dir / file_name
         hashes[file_name] = _sha256(p)
