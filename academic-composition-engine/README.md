@@ -115,6 +115,9 @@ Reguli compare:
 - `ace init`
 - `ace run-section`
 - `ace review`
+- `ace sync-obsidian-knowledge`
+- `ace inspect-anti-prompts`
+- `ace run-devils-advocate`
 - `ace qa-section`
 - `ace qa-run`
 - `ace run-eval`
@@ -124,7 +127,100 @@ Reguli compare:
 - `ace eval-gate`
 - `ace --version`
 
-## 9) Troubleshooting
+## 9) Obsidian Authoring Layer (AntiPrompt DB + Second Brain)
+Obsidian este strat de authoring, nu state store de runtime.
+Runtime-ul consumă snapshot-uri JSON compilate în `app/knowledge/*`, nu citește direct vault-ul la fiecare execuție.
+
+### 9.1 Structura notelor
+Fiecare notă trebuie să aibă frontmatter YAML și `entry_kind`:
+- `entry_kind: anti_prompt`
+- `entry_kind: second_brain`
+
+#### AntiPrompt DB (minim)
+Frontmatter suportat:
+- `id`, `stage`, `severity`, `tags`, `status`
+- `problem_pattern`, `symptoms`, `why_this_is_bad`
+- `devil_advocate_checks`, `counter_instruction`, `reject_conditions`
+
+#### Second Brain (minim)
+Frontmatter suportat:
+- `id`, `type`, `tags`, `status`
+- `context`, `decision`, `why`
+- `alternatives_considered`, `impact`, `related_files`
+
+### 9.2 Sync Obsidian -> snapshots
+```bash
+ace sync-obsidian-knowledge --vault-dir /path/catre/obsidian-vault
+```
+
+Pentru bootstrap rapid există un vault minim versionat în:
+- `obsidian/vault_minimal/AntiPromptDB/Drafting` (10 note AntiPrompt)
+- `obsidian/vault_minimal/SecondBrain` (5 note operaționale)
+
+Template-uri concrete pentru authoring:
+- `obsidian/templates/AntiPrompt-note-template.md`
+- `obsidian/templates/Decision-note-template.md`
+- `obsidian/templates/Playbook-note-template.md`
+- `obsidian/templates/Bug-postmortem-template.md`
+
+Output-uri compilate:
+- `app/knowledge/anti_prompts/outline.json`
+- `app/knowledge/anti_prompts/evidence.json`
+- `app/knowledge/anti_prompts/drafting.json`
+- `app/knowledge/anti_prompts/citation.json`
+- `app/knowledge/second_brain/decisions.json`
+- `app/knowledge/second_brain/playbooks.json`
+- `app/knowledge/second_brain/bugs.json`
+- `app/knowledge/second_brain/release_history.json`
+
+## 10) Devil's Advocate (consultativ, gate-aware)
+Devil’s advocate folosește AntiPrompt DB compilată și produce raport structurat auditabil.
+
+- Activare în pipeline (feature-flag):
+```bash
+ace run-section demo --section-id s1 --enable-devils-advocate --anti-prompt-snapshot-dir app/knowledge/anti_prompts
+```
+- Rulare punctuală pe un run existent:
+```bash
+ace run-devils-advocate demo --run-id <RUN_ID> --section-id s1 --stage drafting
+```
+
+Artefact generat:
+- `data/projects/<project_id>/runs/<run_id>/sections/<section_id>/devils_advocate_report.json`
+
+## 11) Research MCP server (read-only)
+Serverul MCP intern este `research-mcp` și expune exact 3 tool-uri:
+- `google_search`
+- `youtube_search`
+- `reddit_search`
+
+Pornire locală:
+```bash
+research-mcp
+```
+
+Alternativ:
+```bash
+python -m app.mcp.servers.research_server
+```
+
+Config VS Code exemplu: `.vscode/mcp.json` (fără secrete hardcodate).
+
+Env vars opționale:
+- `SERPER_API_KEY` pentru `google_search`
+- `YOUTUBE_API_KEY` pentru `youtube_search`
+
+Notă: toate tool-urile sunt read-only și orientate pe research/discovery.
+
+## 11.1 Ritual de sync recomandat
+Rulează sync-ul obligatoriu:
+- după sesiuni importante în Obsidian;
+- înainte de testarea `devil's advocate`;
+- înainte de release.
+
+Document operațional: `docs/obsidian_sync_ritual.md`.
+
+## 12) Troubleshooting
 - Baseline lipsă:
   - rulează `ace eval-promote-baseline --report <id>`
 - Conflict flag-uri:

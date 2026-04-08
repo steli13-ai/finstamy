@@ -17,6 +17,7 @@ from app.graph.nodes import (
     evidence_builder,
     claim_planner,
     section_writer,
+    devils_advocate,
     citation_resolver,
     evidence_validator,
     final_language_qa,
@@ -94,6 +95,7 @@ def build_graph():
     g.add_node("review_after_evidence", _instrument_node("review_after_evidence", human_review_gate.review_after_evidence))
     g.add_node("claim_planner", _instrument_node("claim_planner", claim_planner.run))
     g.add_node("section_writer", _instrument_node("section_writer", section_writer.run))
+    g.add_node("devils_advocate", _instrument_node("devils_advocate", devils_advocate.run))
     g.add_node("citation_resolver", _instrument_node("citation_resolver", citation_resolver.run))
     g.add_node("evidence_validator", _instrument_node("evidence_validator", evidence_validator.run))
     g.add_node("review_pre_export", _instrument_node("review_pre_export", human_review_gate.review_pre_export))
@@ -113,7 +115,8 @@ def build_graph():
     g.add_edge("evidence_builder", "review_after_evidence")
     g.add_edge("review_after_evidence", "claim_planner")
     g.add_edge("claim_planner", "section_writer")
-    g.add_edge("section_writer", "citation_resolver")
+    g.add_edge("section_writer", "devils_advocate")
+    g.add_edge("devils_advocate", "citation_resolver")
     g.add_edge("citation_resolver", "evidence_validator")
     g.add_edge("evidence_validator", "review_pre_export")
     g.add_edge("review_pre_export", "final_language_qa")

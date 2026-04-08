@@ -10,6 +10,7 @@ from . import rerank_runner
 from . import evidence_builder
 from . import claim_planner
 from . import section_writer
+from . import devils_advocate
 from . import citation_resolver
 from . import evidence_validator
 from . import final_language_qa

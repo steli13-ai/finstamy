@@ -14,6 +14,8 @@ from app.services.run_artifacts import (
     persist_run_artifacts,
 )
 from app.services.languagetool_client import analyze_text
+from app.services.devils_advocate import evaluate_stage, load_anti_prompt_snapshot
+from app.integrations.obsidian.sync import compile_obsidian_knowledge
 from app.eval.runner import run_eval_cases
 from app.eval.reporting import (
     compare_reports,
@@ -92,6 +94,86 @@ def init_project(project_id: str):
     typer.echo(f"OK init: {p}")
 
 
+@app.command("sync-obsidian-knowledge")
+def sync_obsidian_knowledge(
+    vault_dir: str = typer.Option(..., help="Directorul vault/folder Obsidian."),
+    output_dir: str = typer.Option("app/knowledge", help="Output snapshot-uri compilate pentru runtime."),
+    include_glob: str = typer.Option("**/*.md", help="Pattern note markdown incluse."),
+    strict: bool = typer.Option(False, help="Eșuează la prima notă invalidă."),
+):
+    stats = compile_obsidian_knowledge(
+        vault_dir=vault_dir,
+        output_dir=output_dir,
+        include_glob=include_glob,
+        strict=strict,
+    )
+    typer.echo(
+        "\n".join(
+            [
+                f"vault_dir={stats.vault_dir}",
+                f"notes_scanned={stats.notes_scanned}",
+                f"anti_prompts_compiled={stats.anti_prompts_compiled}",
+                f"second_brain_compiled={stats.second_brain_compiled}",
+                f"rejected_notes={stats.rejected_notes}",
+                f"output_dir={stats.output_dir}",
+            ]
+        )
+    )
+
+
+@app.command("inspect-anti-prompts")
+def inspect_anti_prompts(
+    stage: str = typer.Option("drafting", help="outline | evidence | drafting | citation"),
+    snapshot_dir: str = typer.Option("app/knowledge/anti_prompts", help="Director snapshot AntiPrompt DB."),
+):
+    snapshot = load_anti_prompt_snapshot(stage=stage, snapshot_dir=snapshot_dir)
+    typer.echo(
+        "\n".join(
+            [
+                f"stage={snapshot.get('stage')}",
+                f"entries={len(snapshot.get('entries', []))}",
+                f"source={snapshot.get('source')}",
+                f"missing={snapshot.get('missing', False)}",
+            ]
+        )
+    )
+
+
+@app.command("run-devils-advocate")
+def run_devils_advocate(
+    project_id: str,
+    run_id: str = typer.Option(..., help="Run ID existent."),
+    section_id: str = typer.Option("s1", help="Section ID."),
+    stage: str = typer.Option("drafting", help="outline | evidence | drafting | citation"),
+    snapshot_dir: str = typer.Option("app/knowledge/anti_prompts", help="Director snapshot AntiPrompt DB."),
+):
+    p = _project_dir(project_id)
+    section_dir = p / "runs" / run_id / "sections" / section_id
+    if not section_dir.exists():
+        typer.echo(f"Section artifacts inexistente: {section_dir}")
+        raise typer.Exit(1)
+
+    draft_path = section_dir / "draft.md"
+    evidence_path = section_dir / "evidence_pack.json"
+    citation_path = section_dir / "citation_resolution.json"
+
+    draft_text = draft_path.read_text(encoding="utf-8") if draft_path.exists() else ""
+    evidence_pack = json.loads(evidence_path.read_text(encoding="utf-8")) if evidence_path.exists() else {}
+    citation_resolution = json.loads(citation_path.read_text(encoding="utf-8")) if citation_path.exists() else {}
+
+    report = evaluate_stage(
+        section_id=section_id,
+        stage=stage,
+        draft_markdown=draft_text,
+        evidence_pack=evidence_pack,
+        citation_resolution=citation_resolution,
+        snapshot_dir=snapshot_dir,
+    )
+    out_path = section_dir / "devils_advocate_report.json"
+    out_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    typer.echo(f"OK run-devils-advocate: {out_path}")
+
+
 @app.command("run-section")
 def run_section(
     project_id: str,
@@ -104,6 +186,14 @@ def run_section(
     grobid_host: str = typer.Option("http://localhost:8070", help="Host pentru serviciul GROBID."),
     languagetool_host: str = typer.Option("http://localhost:8081", help="Host pentru LanguageTool."),
     auto_approve_gates: bool = typer.Option(False, help="Aprobă automat toate gate-urile umane."),
+    enable_devils_advocate: bool = typer.Option(
+        False,
+        help="Activează verificare consultativă anti-prompt după drafting (feature-flag).",
+    ),
+    anti_prompt_snapshot_dir: str = typer.Option(
+        "app/knowledge/anti_prompts",
+        help="Director snapshot compilat pentru AntiPrompt DB.",
+    ),
 ):
     p = _project_dir(project_id)
     for d in ["sources", "parsed", "retrieval", "evidence", "sections", "citations", "qa", "exports"]:
@@ -128,6 +218,8 @@ def run_section(
         "grobid_host": grobid_host,
         "languagetool_host": languagetool_host,
         "auto_approve_gates": auto_approve_gates,
+        "enable_devils_advocate": enable_devils_advocate,
+        "anti_prompt_snapshot_dir": anti_prompt_snapshot_dir,
     }
 
     result = graph.invoke(input_snapshot, config=_thread_config(run_id))

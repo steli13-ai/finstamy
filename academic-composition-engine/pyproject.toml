@@ -13,11 +13,13 @@ dependencies = [
   "typer>=0.12.5",
   "pyyaml>=6.0.2",
   "lancedb>=0.24.3",
-  "langgraph-checkpoint-sqlite>=2.0.0"
+  "langgraph-checkpoint-sqlite>=2.0.0",
+  "mcp>=1.0.0"
 ]
 
 [project.scripts]
 ace = "app.cli:app"
+research-mcp = "app.mcp.servers.research_server:main"
 
 [tool.setuptools.packages.find]
 include = ["app*"]

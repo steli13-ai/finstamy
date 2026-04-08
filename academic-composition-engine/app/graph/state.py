@@ -9,6 +9,8 @@ class ProjectState(TypedDict, total=False):
     run_dir: str
     target_section_id: str
     auto_approve_gates: bool
+    enable_devils_advocate: bool
+    anti_prompt_snapshot_dir: str
     use_ollama: bool
     ollama_model: str
     ollama_host: str
@@ -44,6 +46,7 @@ class ProjectState(TypedDict, total=False):
     language_qa_summary: dict
     section_status: dict
     quality_scores: dict
+    devils_advocate_reports: dict
 
     artifact_hashes: dict
     export_path: str | None

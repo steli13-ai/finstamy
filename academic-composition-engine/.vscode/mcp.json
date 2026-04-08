@@ -1,0 +1,17 @@
+{
+  "servers": {
+    "research-mcp": {
+      "type": "stdio",
+      "command": "/Users/Mary/Desktop/langgraf/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.mcp.servers.research_server"
+      ],
+      "cwd": "/Users/Mary/Desktop/langgraf/academic-composition-engine",
+      "env": {
+        "SERPER_API_KEY": "${env:SERPER_API_KEY}",
+        "YOUTUBE_API_KEY": "${env:YOUTUBE_API_KEY}"
+      }
+    }
+  }
+}

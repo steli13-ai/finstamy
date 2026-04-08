@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.1-unreleased]
+
+### Added
+- Obsidian authoring integration layer (`client/parser/schemas/sync`) with compiled runtime snapshots in `app/knowledge/*`
+- Consultative devil’s advocate service and optional graph integration (feature-flagged)
+- `research-mcp` server with read-only tools: `google_search`, `youtube_search`, `reddit_search`
+- VS Code MCP example configuration in `.vscode/mcp.json`
+- CLI commands: `sync-obsidian-knowledge`, `inspect-anti-prompts`, `run-devils-advocate`
+
 ## [0.1.0] - 2026-04-07
 
 ### Added
