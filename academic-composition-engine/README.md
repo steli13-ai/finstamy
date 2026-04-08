@@ -179,6 +179,12 @@ Output-uri compilate:
 ## 10) Devil's Advocate (consultativ, gate-aware)
 Devil’s advocate folosește AntiPrompt DB compilată și produce raport structurat auditabil.
 
+Scoring calibrat (`v0.1.3`) este comun pentru `drafting` și `evidence`:
+- `score_total = severity_weight_score + coverage_gap_score + weak_passage_score - confidence_signal_score`
+- Praguri implicite: `pass <= 2`, `review 3..5`, `revise >= 6`
+- Config stabil: `app/config/devils_advocate_scoring.json`
+- Câmpuri noi în raport: `score_total`, `score_breakdown`, `top_issues`, `recommendation_reason`, `scoring_version`
+
 - Activare în pipeline pe etapa evidence (feature-flag):
 ```bash
 ace run-section demo --section-id s1 --enable-devils-advocate-evidence --anti-prompt-snapshot-dir app/knowledge/anti_prompts

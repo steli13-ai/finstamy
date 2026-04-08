@@ -121,7 +121,12 @@ def test_devils_advocate_uses_active_stage_entries(tmp_path: Path):
     assert report["section_id"] == "s1"
     assert report["stage"] == "drafting"
     assert len(report["matched_patterns"]) == 1
-    assert report["recommendation"] in {"manual_review_required", "proceed_with_caution"}
+    assert report["recommendation"] in {"pass", "review", "revise"}
+    assert "score_total" in report
+    assert "score_breakdown" in report
+    assert "top_issues" in report
+    assert "recommendation_reason" in report
+    assert "scoring_version" in report
 
 
 def test_evidence_devils_advocate_report_schema_and_recommendation(tmp_path: Path):
@@ -176,7 +181,12 @@ def test_evidence_devils_advocate_report_schema_and_recommendation(tmp_path: Pat
         "red_flags",
         "coverage_gaps",
         "weak_passages",
+        "score_total",
+        "score_breakdown",
+        "top_issues",
         "recommendation",
+        "recommendation_reason",
+        "scoring_version",
         "required_actions",
         "summary",
         "is_material_issue",
@@ -187,6 +197,141 @@ def test_evidence_devils_advocate_report_schema_and_recommendation(tmp_path: Pat
     assert report["recommendation"] in {"pass", "review", "revise"}
     assert report["recommendation"] == "revise"
     assert report["is_material_issue"] is True
+    assert isinstance(report["score_total"], int)
+    assert isinstance(report["top_issues"], list)
+    assert len(report["top_issues"]) <= 3
+
+
+def test_evidence_scoring_controlled_fixture_produces_pass_review_revise(tmp_path: Path):
+    snapshot_dir = tmp_path / "anti"
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    (snapshot_dir / "evidence.json").write_text(
+        json.dumps(
+            {
+                "generated_at": "2026-04-08T00:00:00Z",
+                "stage": "evidence",
+                "entries": [
+                    {
+                        "id": "ape_001",
+                        "stage": "evidence",
+                        "severity": "high",
+                        "status": "active",
+                        "problem_pattern": "Evidence generic",
+                        "symptoms": ["important", "relevant", "unsupported"],
+                        "why_this_is_bad": "Low argumentative value",
+                        "counter_instruction": "Select concrete passages",
+                        "reject_conditions": ["unsupported_claims_present"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    weak = evaluate_evidence_stage(
+        section_id="s1",
+        questions_to_answer=["What method was used?", "What are key results?"],
+        candidate_passages=[
+            {"source_id": "sA", "chunk_id": "c1", "passage_text": "important relevant unsupported context"}
+        ],
+        allowed_claims=["Method is robust", "Results improved"],
+        unsupported_claims=["unsupported_claims_present"],
+        snapshot_dir=str(snapshot_dir),
+    )
+
+    medium = evaluate_evidence_stage(
+        section_id="s1",
+        questions_to_answer=["What method details support the claim?"],
+        candidate_passages=[
+            {
+                "source_id": "sA",
+                "chunk_id": "c1",
+                "passage_text": "method details and context with some relevant insight",
+            },
+            {
+                "source_id": "sA",
+                "chunk_id": "c2",
+                "passage_text": "in general important relevant overview",
+            },
+        ],
+        allowed_claims=["method details"],
+        unsupported_claims=[],
+        snapshot_dir=str(snapshot_dir),
+    )
+
+    strong = evaluate_evidence_stage(
+        section_id="s1",
+        questions_to_answer=["What method was used?", "What are key results?"],
+        candidate_passages=[
+            {
+                "source_id": "sA",
+                "chunk_id": "c1",
+                "passage_text": "The method uses randomized protocol and reports quantitative result improvements.",
+            },
+            {
+                "source_id": "sB",
+                "chunk_id": "c2",
+                "passage_text": "Result findings include confidence intervals and explicit limitations to avoid bias.",
+            },
+            {
+                "source_id": "sC",
+                "chunk_id": "c3",
+                "passage_text": "Method and result sections align with claim coverage and non-redundant support.",
+            },
+        ],
+        allowed_claims=["randomized protocol", "quantitative result improvements"],
+        unsupported_claims=[],
+        snapshot_dir=str(snapshot_dir),
+    )
+
+    assert weak["recommendation"] == "revise"
+    assert medium["recommendation"] == "review"
+    assert strong["recommendation"] == "pass"
+    assert weak["score_total"] >= 6
+    assert 3 <= medium["score_total"] <= 5
+    assert strong["score_total"] <= 2
+
+
+def test_devils_advocate_scoring_disabled_falls_back_without_breaking(tmp_path: Path):
+    snapshot_dir = tmp_path / "anti"
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    scoring_config = tmp_path / "scoring.json"
+    scoring_config.write_text(json.dumps({"enabled": False}), encoding="utf-8")
+    (snapshot_dir / "drafting.json").write_text(
+        json.dumps(
+            {
+                "generated_at": "2026-04-08T00:00:00Z",
+                "stage": "drafting",
+                "entries": [
+                    {
+                        "id": "ap_draft_1",
+                        "stage": "drafting",
+                        "severity": "high",
+                        "status": "active",
+                        "problem_pattern": "Text generic",
+                        "symptoms": ["generic"],
+                        "counter_instruction": "Cere ancore de evidence",
+                        "reject_conditions": ["fără trasabilitate"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = evaluate_stage(
+        section_id="s1",
+        stage="drafting",
+        draft_markdown="Text generic.",
+        evidence_pack={"candidate_passages": []},
+        citation_resolution={"unresolved": ["[1]"]},
+        snapshot_dir=str(snapshot_dir),
+        scoring_config_path=str(scoring_config),
+    )
+
+    assert report["recommendation"] in {"ok", "proceed_with_caution", "manual_review_required"}
+    assert report["score_total"] is None
+    assert report["score_breakdown"] is None
 
 
 def test_evidence_devils_advocate_node_off_has_no_side_effects():
