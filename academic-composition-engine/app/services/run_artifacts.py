@@ -238,6 +238,7 @@ def build_devils_advocate_kpi_summary(*, project_dir: str, run_id: str) -> dict:
         "feedback_status": "pending_feedback",
         "feedback_reports_count": 0,
         "reports_without_feedback": 0,
+        "total_red_flags_with_feedback": 0,
         "stage_breakdown": {},
     }
 
@@ -323,6 +324,7 @@ def build_devils_advocate_kpi_summary(*, project_dir: str, run_id: str) -> dict:
 
     summary["feedback_reports_count"] = feedback_reports_count
     summary["reports_without_feedback"] = reports_without_feedback
+    summary["total_red_flags_with_feedback"] = red_flags_with_feedback
 
     if feedback_reports_count == 0:
         summary["feedback_status"] = "pending_feedback"

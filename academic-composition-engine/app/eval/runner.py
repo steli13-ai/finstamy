@@ -9,6 +9,17 @@ from app.graph.graph import build_graph
 from app.services.run_artifacts import build_metrics, create_run_id, persist_run_artifacts, utc_now_iso
 
 
+def _load_run_kpi_summary(project_dir: Path, run_id: str) -> dict:
+    path = project_dir / "runs" / run_id / "devils_advocate_kpi_summary.json"
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
 def run_eval_cases(cases_dir: Path | str = "eval/cases", reports_dir: Path | str = "eval/reports") -> Path:
     cases_path = Path(cases_dir)
     reports_path = Path(reports_dir)
@@ -82,6 +93,7 @@ def run_eval_cases(cases_dir: Path | str = "eval/cases", reports_dir: Path | str
                 "run_id": run_id,
                 "metrics": metrics,
                 "metric_groups": grouped_metrics,
+                "devils_advocate_kpis": _load_run_kpi_summary(project_dir, run_id),
             }
         )
 
@@ -89,6 +101,26 @@ def run_eval_cases(cases_dir: Path | str = "eval/cases", reports_dir: Path | str
         values = [r["metrics"].get(metric_name) for r in rows]
         numeric = [v for v in values if isinstance(v, (int, float))]
         return mean(numeric) if numeric else None
+
+    kpi_rows = [r.get("devils_advocate_kpis", {}) for r in rows]
+    total_red_flags = sum(int(k.get("total_red_flags", 0) or 0) for k in kpi_rows if isinstance(k, dict))
+    reports_with_feedback = [k for k in kpi_rows if isinstance(k, dict) and int(k.get("feedback_reports_count", 0) or 0) > 0]
+    useful_red_flags = None
+    false_positives = None
+    useful_red_flag_rate = None
+    false_positive_rate = None
+    feedback_status = "pending_feedback"
+
+    if reports_with_feedback:
+        useful_total = sum(int(k.get("useful_red_flags", 0) or 0) for k in reports_with_feedback)
+        false_positive_total = sum(int(k.get("false_positives", 0) or 0) for k in reports_with_feedback)
+        denom = sum(int(k.get("total_red_flags_with_feedback", 0) or 0) for k in reports_with_feedback)
+        useful_red_flags = useful_total
+        false_positives = false_positive_total
+        useful_red_flag_rate = (useful_total / denom) if denom > 0 else None
+        false_positive_rate = (false_positive_total / denom) if denom > 0 else None
+        has_pending = any(str(k.get("feedback_status", "")).lower() != "complete" for k in reports_with_feedback)
+        feedback_status = "partial_feedback" if has_pending else "complete"
 
     summary = {
         "generated_at": utc_now_iso(),
@@ -104,6 +136,7 @@ def run_eval_cases(cases_dir: Path | str = "eval/cases", reports_dir: Path | str
         "sections_with_high_issues": avg("high_severity_count"),
         "total_language_issues": avg("language_issue_count"),
         "avg_devils_advocate_score_total": avg("devils_advocate_score_total"),
+        "avg_score_total": avg("devils_advocate_score_total"),
         "reports_with_material_issue": sum(
             1 for r in rows if r.get("metrics", {}).get("devils_advocate_is_material_issue") is True
         ),
@@ -112,6 +145,12 @@ def run_eval_cases(cases_dir: Path | str = "eval/cases", reports_dir: Path | str
             "review": sum(1 for r in rows if r.get("metrics", {}).get("devils_advocate_recommendation") == "review"),
             "revise": sum(1 for r in rows if r.get("metrics", {}).get("devils_advocate_recommendation") == "revise"),
         },
+        "useful_red_flags": useful_red_flags,
+        "total_red_flags": total_red_flags,
+        "false_positives": false_positives,
+        "useful_red_flag_rate": useful_red_flag_rate,
+        "false_positive_rate": false_positive_rate,
+        "devils_advocate_feedback_status": feedback_status,
     }
 
     report_path = save_eval_report(summary=summary, cases=rows, reports_dir=reports_path)

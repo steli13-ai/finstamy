@@ -36,9 +36,11 @@ ace qa-run demo --run-id <RUN_ID>
 ace run-eval
 ace eval-report --latest
 ace eval-gate --use-baseline --target latest --threshold-config eval/thresholds.json
+ace eval-history --limit 5
 
-# 6) baseline + compare
+# 6) baseline + compare + release KPI snapshot
 ace eval-promote-baseline --report <REPORT_ID_OR_latest>
+ace eval-promote-release-kpis --report <REPORT_ID_OR_latest> --version v0.1.5
 ace eval-compare --use-baseline --target <REPORT_ID>
 ```
 
@@ -76,9 +78,12 @@ Notă: comanda `review` folosește același `run_id` (thread_id/checkpoint) și 
 - Eval reports: `eval/reports/`
   - `<report_id>/summary.json`
   - `<report_id>/cases.json`
+  - `<report_id>/kpi_snapshot.json`
   - `latest.json`
   - `baseline.json`
   - `compare_<base>_vs_<target>.json`
+- KPI history (append-only): `eval/history/kpi_history.json`
+- Release KPI snapshots: `eval/history/releases/<version>.json`
 
 ## 6) Eval workflow
 ```bash
@@ -96,6 +101,12 @@ ace eval-compare --use-baseline --target <REPORT_ID> --threshold 0.01 --threshol
 
 # regression gate (pass/fail operațional)
 ace eval-gate --use-baseline --target <REPORT_ID> --threshold-config eval/thresholds.json
+
+# promovare explicită snapshot KPI pe release
+ace eval-promote-release-kpis --report <REPORT_ID> --version v0.1.5
+
+# istoric longitudinal compact
+ace eval-history --limit 10
 ```
 
 Reguli compare:
@@ -126,7 +137,9 @@ Reguli compare:
 - `ace run-eval`
 - `ace eval-report`
 - `ace eval-promote-baseline`
+- `ace eval-promote-release-kpis`
 - `ace eval-compare`
+- `ace eval-history`
 - `ace eval-gate`
 - `ace --version`
 

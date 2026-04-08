@@ -120,6 +120,7 @@ def test_4_run_eval_writes_reports():
     report_dir = reports_dir / report_id
     assert (report_dir / "summary.json").exists()
     assert (report_dir / "cases.json").exists()
+    assert (report_dir / "kpi_snapshot.json").exists()
     assert (reports_dir / "latest.json").exists()
 
 
@@ -142,3 +143,12 @@ def test_5_baseline_and_compare_outputs():
     assert "summary_delta" in payload
     assert "regressions_summary" in payload
     assert "case_level_diff" in payload
+
+    promote_release = _run_cli(["eval-promote-release-kpis", "--report", target_id, "--version", "v0.1.5-smoke"], cwd=repo)
+    assert promote_release.returncode == 0, promote_release.stderr
+    release_snapshot = repo / "eval" / "history" / "releases" / "v0.1.5-smoke.json"
+    assert release_snapshot.exists()
+
+    history = _run_cli(["eval-history", "--limit", "3"], cwd=repo)
+    assert history.returncode == 0, history.stderr
+    assert "history_total=" in history.stdout

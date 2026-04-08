@@ -31,11 +31,13 @@ from app.services.devils_advocate import evaluate_stage, load_anti_prompt_snapsh
 from app.integrations.obsidian.sync import compile_obsidian_knowledge
 from app.mcp.servers.research_server import google_search, youtube_search, reddit_search
 from app.eval.runner import run_eval_cases
+from app.eval.history import load_kpi_history
 from app.eval.reporting import (
     compare_reports,
     evaluate_comparison_gate,
     load_report,
     promote_baseline,
+    promote_release_kpis,
     resolve_base_report,
 )
 
@@ -671,6 +673,50 @@ def eval_promote_baseline(
 ):
     out = promote_baseline(report=report, reports_dir=reports_dir)
     typer.echo(f"OK eval-promote-baseline: {out}")
+
+
+@app.command("eval-promote-release-kpis")
+def eval_promote_release_kpis(
+    report: str = typer.Option(..., help="Raport de promovat (id/path/latest)."),
+    version: str = typer.Option(..., help="Versiune release, ex: v0.1.5"),
+    reports_dir: str = typer.Option("eval/reports", help="Directorul cu rapoarte."),
+):
+    try:
+        out = promote_release_kpis(report=report, version=version, reports_dir=reports_dir)
+    except ValueError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+    typer.echo(f"OK eval-promote-release-kpis: {out}")
+
+
+@app.command("eval-history")
+def eval_history(
+    reports_dir: str = typer.Option("eval/reports", help="Directorul cu rapoarte."),
+    limit: int = typer.Option(5, help="Număr snapshot-uri afișate (ultimele N)."),
+):
+    history = load_kpi_history(reports_dir=reports_dir)
+    if not history:
+        typer.echo("Nu există KPI history încă.")
+        return
+
+    latest_entries = history[-max(1, limit):]
+    lines = [f"history_total={len(history)}", f"showing_last={len(latest_entries)}"]
+    for row in latest_entries:
+        rid = row.get("report_id")
+        created = row.get("created_at")
+        useful_rate = row.get("useful_red_flag_rate")
+        fp_rate = row.get("false_positive_rate")
+        language = row.get("avg_language_score")
+        unsupported = row.get("unsupported_claim_rate")
+        lines.append(
+            (
+                f"report_id={rid} created_at={created} "
+                f"avg_language_score={language} unsupported_claim_rate={unsupported} "
+                f"useful_red_flag_rate={useful_rate} false_positive_rate={fp_rate}"
+            )
+        )
+
+    typer.echo("\n".join(lines))
 
 
 @app.command("eval-gate")

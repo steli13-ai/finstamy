@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
+from app.eval.history import append_kpi_history, promote_release_snapshot
 
 
 CORE_METRICS = {
@@ -41,6 +45,16 @@ def save_eval_report(*, summary: dict, cases: list[dict], reports_dir: Path | st
     (report_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     (report_dir / "cases.json").write_text(json.dumps(cases, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    kpi_snapshot_path = report_dir / "kpi_snapshot.json"
+    if not kpi_snapshot_path.exists():
+        kpi_snapshot = build_kpi_snapshot(
+            report_id=report_id,
+            summary=summary,
+            reports_dir=reports_dir,
+        )
+        kpi_snapshot_path.write_text(json.dumps(kpi_snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+        append_kpi_history(kpi_snapshot, reports_dir=reports_dir)
+
     latest_meta = {
         "report_id": report_id,
         "generated_at": summary.get("generated_at"),
@@ -52,6 +66,105 @@ def save_eval_report(*, summary: dict, cases: list[dict], reports_dir: Path | st
 
 def _load_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _safe_git(command: list[str]) -> str | None:
+    try:
+        value = subprocess.check_output(command, stderr=subprocess.DEVNULL, text=True).strip()
+        return value or None
+    except Exception:
+        return None
+
+
+def _sha256_file(path: Path) -> str | None:
+    if not path.exists():
+        return None
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _resolve_baseline_reference(reports_dir: Path | str = "eval/reports") -> str | None:
+    root = _reports_root(reports_dir)
+    baseline_path = root / "baseline.json"
+    if not baseline_path.exists():
+        return None
+    try:
+        payload = _load_json(baseline_path)
+    except Exception:
+        return None
+    baseline_id = payload.get("baseline_report_id")
+    baseline_ref_path = payload.get("path")
+    if isinstance(baseline_id, str) and baseline_id:
+        return baseline_id
+    if isinstance(baseline_ref_path, str) and baseline_ref_path:
+        return baseline_ref_path
+    return None
+
+
+def _resolve_scoring_version() -> str | None:
+    config_path = Path("app/config/devils_advocate_scoring.json")
+    if not config_path.exists():
+        return None
+    try:
+        payload = _load_json(config_path)
+        value = payload.get("scoring_version")
+        return str(value) if value is not None else None
+    except Exception:
+        return None
+
+
+def _resolve_thresholds_version() -> str | None:
+    threshold_path = Path("eval/thresholds.json")
+    digest = _sha256_file(threshold_path)
+    if not digest:
+        return None
+    return f"sha256:{digest[:12]}"
+
+
+def build_kpi_snapshot(*, report_id: str, summary: dict, reports_dir: Path | str = "eval/reports") -> dict:
+    return {
+        "report_id": report_id,
+        "created_at": summary.get("generated_at") or datetime.now(timezone.utc).isoformat(),
+        "baseline_reference": _resolve_baseline_reference(reports_dir),
+        "git_commit": _safe_git(["git", "rev-parse", "HEAD"]),
+        "git_ref": _safe_git(["git", "rev-parse", "--abbrev-ref", "HEAD"]),
+        "scoring_version": _resolve_scoring_version(),
+        "thresholds_version": _resolve_thresholds_version(),
+        "cases_count": summary.get("cases_total"),
+        "unsupported_claim_rate": summary.get("unsupported_claim_rate"),
+        "citation_resolution_rate": summary.get("citation_resolution_rate"),
+        "avg_language_score": summary.get("avg_language_score"),
+        "fallback_rate": summary.get("fallback_rate"),
+        "first_pass_acceptance_rate": summary.get("first_pass_acceptance_rate"),
+        "useful_red_flags": summary.get("useful_red_flags"),
+        "total_red_flags": summary.get("total_red_flags"),
+        "false_positives": summary.get("false_positives"),
+        "useful_red_flag_rate": summary.get("useful_red_flag_rate"),
+        "false_positive_rate": summary.get("false_positive_rate"),
+        "recommendation_distribution": summary.get("recommendation_distribution"),
+        "reports_with_material_issue": summary.get("reports_with_material_issue"),
+        "avg_score_total": summary.get("avg_score_total", summary.get("avg_devils_advocate_score_total")),
+        "feedback_status": summary.get("devils_advocate_feedback_status"),
+    }
+
+
+def load_kpi_snapshot(report: str, reports_dir: Path | str = "eval/reports") -> dict:
+    report_dir = resolve_report_dir(report, reports_dir=reports_dir)
+    path = report_dir / "kpi_snapshot.json"
+    if not path.exists():
+        loaded = load_report(report, reports_dir=reports_dir)
+        snapshot = build_kpi_snapshot(
+            report_id=loaded.get("report_id", report_dir.name),
+            summary=loaded.get("summary", {}),
+            reports_dir=reports_dir,
+        )
+        path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+        append_kpi_history(snapshot, reports_dir=reports_dir)
+        return snapshot
+    return _load_json(path)
 
 
 def resolve_report_dir(report: str, reports_dir: Path | str = "eval/reports") -> Path:
@@ -323,6 +436,11 @@ def promote_baseline(report: str, reports_dir: Path | str = "eval/reports") -> P
     out = root / "baseline.json"
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return out
+
+
+def promote_release_kpis(*, report: str, version: str, reports_dir: Path | str = "eval/reports") -> Path:
+    snapshot = load_kpi_snapshot(report, reports_dir=reports_dir)
+    return promote_release_snapshot(snapshot=snapshot, version=version, reports_dir=reports_dir)
 
 
 def resolve_base_report(
